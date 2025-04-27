@@ -5,13 +5,13 @@ import pickle
 import hashlib
 from typing import List, Dict, Any, Optional
 from pyzotero import zotero
-from llama_index.llms.openai import OpenAI
+# from llama_index.llms.openai import OpenAI
 from llama_index.core.schema import Document
 from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader
 from datetime import datetime
 
-from models import CustomOpenAI as OpenAI
+from src.models import CustomOpenAI as OpenAI
 
 
 
@@ -287,7 +287,7 @@ class ZoteroRAG:
         Args:
             research_question: The research question
             documents: List of Document objects
-            max_items: Maximum number of items to return (default: self.max_papers_used)
+            max_items: Maximum number of items after screening to return (default: self.max_papers_used)
             
         Returns:
             List of relevant Document objects
@@ -297,10 +297,6 @@ class ZoteroRAG:
             
         print(f"\n[SCREENING] Screening {len(documents)} documents for relevance to: '{research_question}'")
         
-        if len(documents) <= max_items:
-            print(f"[SCREENING] Number of documents ({len(documents)}) is less than or equal to max items ({max_items}), skipping screening")
-            return documents
-            
         # Format documents as context
         docs_context = ""
         for i, doc in enumerate(documents):
@@ -833,6 +829,7 @@ class ZoteroRAG:
     def process_documents_with_full_text(self, research_question: str, documents: List[Document], max_papers_to_download: int = 3) -> List[Document]:
         """
         Process documents including downloading and parsing PDFs for full text analysis.
+        Uses parallel processing for improved efficiency.
         
         Args:
             research_question: The research question
@@ -849,10 +846,33 @@ class ZoteroRAG:
         
         updated_documents = documents.copy()  # Create a copy to avoid modifying the original list
         
-        # Process selected documents to retrieve full text
-        for i in selected_indices:
-            print(f"[FULL TEXT PROCESSING] Processing document {i+1}/{len(selected_indices)}: {documents[i].metadata.get('title', 'Untitled')}")
-            updated_documents[i] = self.get_document_full_text(documents[i])
+        if not selected_indices:
+            print(f"[FULL TEXT PROCESSING] No documents selected for full text processing")
+            return updated_documents
+        
+        print(f"[FULL TEXT PROCESSING] Processing {len(selected_indices)} documents in parallel")
+        
+        # Define a worker function for parallel processing
+        def process_document(idx):
+            doc = documents[idx]
+            print(f"[FULL TEXT PROCESSING] Processing document {idx+1}/{len(selected_indices)}: {doc.metadata.get('title', 'Untitled')}")
+            return idx, self.get_document_full_text(doc)
+        
+        # Process documents in parallel using ThreadPoolExecutor
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        with ThreadPoolExecutor(max_workers=min(len(selected_indices), 5)) as executor:
+            # Submit all tasks
+            future_to_index = {executor.submit(process_document, idx): idx for idx in selected_indices}
+            
+            # Process results as they complete
+            for future in as_completed(future_to_index):
+                try:
+                    idx, processed_doc = future.result()
+                    updated_documents[idx] = processed_doc
+                except Exception as e:
+                    idx = future_to_index[future]
+                    print(f"[FULL TEXT PROCESSING] Error processing document {idx+1}: {str(e)}")
         
         print(f"[FULL TEXT PROCESSING] Processed {len(updated_documents)} documents ({sum(1 for doc in updated_documents if doc.metadata.get('has_full_text', False))} with full text)")
         return updated_documents
@@ -1029,6 +1049,8 @@ def main():
 
     # Example usage
     research_question = "What are the sensitivity of these measurements: Spin Noise Spectroscopy (SNS), Optically Detected Magnetic Resonance (ODMR), Nuclear Magnetic Resonance (NMR) setups?"
+
+    research_question = "what is the relationship between chirality and magnetism?"   
 
     retrived_papers = zotero_engine.get_papers_for_research(research_question=research_question, use_full_text=True, max_papers_to_download=3, max_papers_to_consider=None)
     

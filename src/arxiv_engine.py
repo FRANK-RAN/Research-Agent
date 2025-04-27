@@ -6,10 +6,12 @@ import hashlib
 from typing import List, Dict, Any, Optional
 import arxiv
 from datetime import datetime
-from llama_index.llms.openai import OpenAI
+# from llama_index.llms.openai import OpenAI
+from src.models import CustomOpenAI as OpenAI
 from llama_index.core.schema import Document
 from llama_parse import LlamaParse
 from llama_index.core import SimpleDirectoryReader
+import concurrent.futures
 
 class ArxivRAG:
     """
@@ -150,7 +152,7 @@ class ArxivRAG:
                 "url": paper.entry_id,
                 "published": paper.published.strftime('%Y-%m-%d') if paper.published else "Unknown",
                 "categories": ", ".join(paper.categories),
-                "summary_snippet": paper.summary[:200] + "..." if len(paper.summary) > 200 else paper.summary
+                "summary_snippet": paper.summary
             }
             papers_info.append(paper_info)
             
@@ -263,7 +265,7 @@ class ArxivRAG:
         Args:
             research_question: The research question
             documents: List of Document objects
-            max_items: Maximum number of items to return (default: self.max_papers_used)
+            max_items: Maximum number of items after screening to return (default: self.max_papers_used)
             
         Returns:
              Tuple containing (selected_documents, selected_indices)
@@ -273,9 +275,6 @@ class ArxivRAG:
             
         print(f"\n[SCREENING] Screening {len(documents)} documents for relevance to: '{research_question}'")
         
-        if len(documents) <= max_items:
-            print(f"[SCREENING] Number of documents ({len(documents)}) is less than or equal to max items ({max_items}), skipping screening")
-            return documents
             
         # Format documents as context
         docs_context = ""
@@ -596,10 +595,10 @@ class ArxivRAG:
         else:
             print(f"[FULL TEXT] No PDF could be downloaded, using abstract only")
             return doc
-    
+                     
     def process_documents_with_full_text(self, research_question: str, documents: List[Document], papers: List[arxiv.Result], max_papers_to_download: int = 3) -> List[Document]:
         """
-        Process documents including downloading and parsing PDFs for full text analysis.
+        Process documents including downloading and parsing PDFs for full text analysis in parallel.
         
         Args:
             research_question: The research question
@@ -617,11 +616,38 @@ class ArxivRAG:
         
         updated_documents = documents.copy()  # Create a copy to avoid modifying the original list
         
-        # Process selected documents to retrieve full text
-        for i in selected_indices:
-            if i < len(papers):  # Make sure we have the corresponding paper
-                print(f"[FULL TEXT PROCESSING] Processing document {i+1}/{len(selected_indices)}: {documents[i].metadata.get('title', 'Untitled')}")
-                updated_documents[i] = self.get_document_full_text(documents[i], papers[i])
+        if not selected_indices:
+            print(f"[FULL TEXT PROCESSING] No documents selected for full text processing")
+            return updated_documents
+        
+        
+        print(f"[FULL TEXT PROCESSING] Processing {len(selected_indices)} documents in parallel")
+        
+        # Create a list of (document, paper) tuples for selected indices
+        docs_to_process = [(documents[i], papers[i]) for i in selected_indices if i < len(papers)]
+        
+        # Define a worker function for parallel processing
+        def process_doc_worker(doc_paper_tuple):
+            doc, paper = doc_paper_tuple
+            return self.get_document_full_text(doc, paper)
+        
+        # Use ThreadPoolExecutor for parallel processing
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(docs_to_process), 5)) as executor:
+            # Submit all tasks and collect futures
+            future_to_index = {
+                executor.submit(process_doc_worker, (documents[i], papers[i])): i 
+                for i in selected_indices if i < len(papers)
+            }
+            
+            # Process results as they complete
+            for future in concurrent.futures.as_completed(future_to_index):
+                i = future_to_index[future]
+                try:
+                    # Get the result and update the document
+                    updated_documents[i] = future.result()
+                    print(f"[FULL TEXT PROCESSING] Completed document {i+1}: {documents[i].metadata.get('title', 'Untitled')}")
+                except Exception as e:
+                    print(f"[FULL TEXT PROCESSING] Error processing document {i+1}: {str(e)}")
         
         print(f"[FULL TEXT PROCESSING] Processed {len(updated_documents)} documents ({sum(1 for doc in updated_documents if doc.metadata.get('has_full_text', False))} with full text)")
         return updated_documents
@@ -803,19 +829,19 @@ def save_papers_to_json(retrieved_papers, output_dir="./json_output"):
 def main():
     arxiv_engine = ArxivRAG(
         llm_model='o3-mini',
-        max_results=100,
-        max_papers_used=30,
+        max_results=300,
+        max_papers_used=100,
         download_dir='./arxiv_downloads',
         cache_dir='./arxiv_cache'
     )
 
     # Example usage
-    research_question = "What are the sensitivity of these measurements: Spin Noise Spectroscopy (SNS), Optically Detected Magnetic Resonance (ODMR), Nuclear Magnetic Resonance (NMR) setups?"
+    research_question = "What is the challenges to efficient ai agent memory"
 
     retrieved_papers = arxiv_engine.get_papers_for_research(
         research_question=research_question, 
         use_llm_query=True,
-        use_full_text=True, 
+        use_full_text=False, 
         max_papers_to_download=3
     )
     

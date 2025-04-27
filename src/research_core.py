@@ -5,11 +5,13 @@ import concurrent.futures
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 from llama_index.core.schema import Document
-from llama_index.llms.openai import OpenAI
+# from llama_index.llms.openai import OpenAI
+from src.models import CustomOpenAI as OpenAI
+import concurrent.futures
 
 # Import the Zotero and ArXiv engines
-from zotero_engine import ZoteroRAG
-from arxiv_engine import ArxivRAG
+from src.zotero_engine import ZoteroRAG
+from src.arxiv_engine import ArxivRAG
 
 
 class ResearchCore:
@@ -61,98 +63,121 @@ class ResearchCore:
         
         # Keep track of research history
         self.research_history = []
-    
+
+
+
     def retrieve_papers(
-        self, 
-        research_question: str, 
-        use_zotero: bool = True,
-        use_arxiv: bool = True,
-        zotero_collection_keys: List[str] = None,
-        use_full_text: bool = True,
-        max_papers_to_download: int = 3
-    ) -> Tuple[List[Document], Dict[str, Any]]:
-        """
-        Retrieve papers from Zotero and/or ArXiv based on the research question.
-        
-        Args:
-            research_question: The research question to answer
-            use_zotero: Whether to retrieve papers from Zotero
-            use_arxiv: Whether to retrieve papers from ArXiv
-            zotero_collection_keys: Specific Zotero collections to search (if None, searches entire library)
-            use_full_text: Whether to download and process full-text papers
-            max_papers_to_download: Maximum number of papers to download for full-text analysis
+            self, 
+            research_question: str, 
+            use_zotero: bool = True,
+            use_arxiv: bool = True,
+            zotero_collection_keys: List[str] = None,
+            use_full_text: bool = True,
+            max_papers_to_download: int = 3
+        ) -> Tuple[List[Document], Dict[str, Any]]:
+            """
+            Retrieve papers from Zotero and/or ArXiv based on the research question.
+            Uses parallel processing to fetch from both sources simultaneously.
             
-        Returns:
-            Tuple of (combined list of documents, retrieval stats)
-        """
-        print(f"\n[RESEARCH CORE] Retrieving papers for research question: '{research_question}'")
-        start_time = time.time()
-        
-        all_documents = []
-        retrieval_stats = {
-            "research_question": research_question,
-            "zotero_used": use_zotero,
-            "arxiv_used": use_arxiv,
-            "full_text_used": use_full_text,
-            "total_documents": 0,
-            "documents_with_full_text": 0,
-            "zotero_documents": 0,
-            "arxiv_documents": 0,
-            "retrieval_time": 0
-        }
-        
-        # Retrieve from Zotero if configured and requested
-        if use_zotero and self.zotero_engine:
-            print(f"[RESEARCH CORE] Retrieving papers from Zotero")
-            zotero_result = self.zotero_engine.get_papers_for_research(
-                research_question=research_question,
-                collection_keys=zotero_collection_keys,
-                use_full_text=use_full_text,
-                max_papers_to_download=max_papers_to_download
-            )
+            Args:
+                research_question: The research question to answer
+                use_zotero: Whether to retrieve papers from Zotero
+                use_arxiv: Whether to retrieve papers from ArXiv
+                zotero_collection_keys: Specific Zotero collections to search (if None, searches entire library)
+                use_full_text: Whether to download and process full-text papers
+                max_papers_to_download: Maximum number of papers to download for full-text analysis
+                
+            Returns:
+                Tuple of (combined list of documents, retrieval stats)
+            """
+            print(f"\n[RESEARCH CORE] Retrieving papers for research question: '{research_question}'")
+            start_time = time.time()
             
-            zotero_documents = zotero_result["documents"]
+            all_documents = []
+            retrieval_stats = {
+                "research_question": research_question,
+                "zotero_used": use_zotero,
+                "arxiv_used": use_arxiv,
+                "full_text_used": use_full_text,
+                "total_documents": 0,
+                "documents_with_full_text": 0,
+                "zotero_documents": 0,
+                "arxiv_documents": 0,
+                "retrieval_time": 0
+            }
             
-            # Add source metadata to documents
-            for doc in zotero_documents:
-                doc.metadata["source"] = "zotero"
-            
-            all_documents.extend(zotero_documents)
-            retrieval_stats["zotero_documents"] = len(zotero_documents)
-            print(f"[RESEARCH CORE] Retrieved {len(zotero_documents)} documents from Zotero")
-        
-        # Retrieve from ArXiv if configured and requested
-        if use_arxiv and self.arxiv_engine:
-            print(f"[RESEARCH CORE] Retrieving papers from ArXiv")
-            arxiv_result = self.arxiv_engine.get_papers_for_research(
-                research_question=research_question,
-                use_llm_query=True,
-                use_full_text=use_full_text,
-                max_papers_to_download=max_papers_to_download
-            )
-            
-            if "documents" in arxiv_result:
-                arxiv_documents = arxiv_result["documents"]
+            # Define retrieval functions for each source
+            def retrieve_from_zotero():
+                if not use_zotero or not self.zotero_engine:
+                    return []
+                    
+                print(f"[RESEARCH CORE] Retrieving papers from Zotero")
+                zotero_result = self.zotero_engine.get_papers_for_research(
+                    research_question=research_question,
+                    collection_keys=zotero_collection_keys,
+                    use_full_text=use_full_text,
+                    max_papers_to_download=max_papers_to_download
+                )
+                
+                zotero_documents = zotero_result["documents"]
                 
                 # Add source metadata to documents
-                for doc in arxiv_documents:
-                    doc.metadata["source"] = "arxiv"
+                for doc in zotero_documents:
+                    doc.metadata["source"] = "zotero"
                 
+                print(f"[RESEARCH CORE] Retrieved {len(zotero_documents)} documents from Zotero")
+                return zotero_documents
+            
+            def retrieve_from_arxiv():
+                if not use_arxiv or not self.arxiv_engine:
+                    return []
+                    
+                print(f"[RESEARCH CORE] Retrieving papers from ArXiv")
+                arxiv_result = self.arxiv_engine.get_papers_for_research(
+                    research_question=research_question,
+                    use_llm_query=True,
+                    use_full_text=use_full_text,
+                    max_papers_to_download=max_papers_to_download
+                )
+                
+                if "documents" in arxiv_result:
+                    arxiv_documents = arxiv_result["documents"]
+                    
+                    # Add source metadata to documents
+                    for doc in arxiv_documents:
+                        doc.metadata["source"] = "arxiv"
+                    
+                    print(f"[RESEARCH CORE] Retrieved {len(arxiv_documents)} documents from ArXiv")
+                    return arxiv_documents
+                else:
+                    print(f"[RESEARCH CORE] No documents retrieved from ArXiv")
+                    return []
+            
+            # Execute both retrieval operations in parallel
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                # Submit both retrieval tasks
+                zotero_future = executor.submit(retrieve_from_zotero)
+                arxiv_future = executor.submit(retrieve_from_arxiv)
+                
+                # Collect results as they complete
+                zotero_documents = zotero_future.result()
+                arxiv_documents = arxiv_future.result()
+                
+                # Update documents and stats
+                all_documents.extend(zotero_documents)
                 all_documents.extend(arxiv_documents)
+                retrieval_stats["zotero_documents"] = len(zotero_documents)
                 retrieval_stats["arxiv_documents"] = len(arxiv_documents)
-                print(f"[RESEARCH CORE] Retrieved {len(arxiv_documents)} documents from ArXiv")
-            else:
-                print(f"[RESEARCH CORE] No documents retrieved from ArXiv")
-        
-        # Update statistics
-        retrieval_stats["total_documents"] = len(all_documents)
-        retrieval_stats["documents_with_full_text"] = sum(1 for doc in all_documents if doc.metadata.get("has_full_text", False))
-        retrieval_stats["retrieval_time"] = time.time() - start_time
-        
-        print(f"[RESEARCH CORE] Retrieved {retrieval_stats['total_documents']} total documents ({retrieval_stats['documents_with_full_text']} with full text)")
-        print(f"[RESEARCH CORE] Retrieval completed in {retrieval_stats['retrieval_time']:.2f} seconds")
-        
-        return all_documents, retrieval_stats
+            
+            # Update statistics
+            retrieval_stats["total_documents"] = len(all_documents)
+            retrieval_stats["documents_with_full_text"] = sum(1 for doc in all_documents if doc.metadata.get("has_full_text", False))
+            retrieval_stats["retrieval_time"] = time.time() - start_time
+            
+            print(f"[RESEARCH CORE] Retrieved {retrieval_stats['total_documents']} total documents ({retrieval_stats['documents_with_full_text']} with full text)")
+            print(f"[RESEARCH CORE] Retrieval completed in {retrieval_stats['retrieval_time']:.2f} seconds")
+            
+            return all_documents, retrieval_stats
     
     def get_full_text_papers(self, documents: List[Document]) -> List[int]:
         """
@@ -514,7 +539,7 @@ def main():
         'library_type': 'group',
         'api_key': '91Z1BHYMHJonusqkbBP6hE60',
         'llm_model': 'o3-mini',
-        'max_papers_used': 50,
+        'max_papers_used': 10,
         'download_dir': './zotero_downloads',
         'cache_dir': './paper_cache',
         'local_storage_path': None  # Set to your local Zotero storage path if available
@@ -523,15 +548,15 @@ def main():
     # Example configuration for ArXiv
     arxiv_config = {
         'llm_model': 'o3-mini',
-        'max_results': 30,
-        'max_papers_used': 10,
+        'max_results': 300,
+        'max_papers_used': 100,
         'download_dir': './arxiv_downloads',
         'cache_dir': './arxiv_cache'
     }
     
     # Initialize the research core with both engines
     research_core = ResearchCore(
-        llm_model='o3-mini',
+        llm_model='o4-mini',
         output_dir='./research_output',
         zotero_config=zotero_config,
         arxiv_config=arxiv_config
@@ -539,14 +564,16 @@ def main():
     
     # Example research question
     research_question = "What are the sensitivity of these measurements: Spin Noise Spectroscopy (SNS), Optically Detected Magnetic Resonance (ODMR), Nuclear Magnetic Resonance (NMR) setups?"
+
+    # research_question = "Agent memory?"
     
     # Run the literature review
     results = research_core.run_literature_review(
         research_question=research_question,
         use_zotero=True,
         use_arxiv=True,
-        use_full_text=True,
-        max_papers_to_download=3
+        use_full_text=False,
+        max_papers_to_download=10
     )
     
     # Print the literature review
