@@ -951,7 +951,7 @@ class ZoteroRAG:
                 items = self.get_all_library_items()
             
             # Filter items to include only relevant types
-            relevant_types = ['journalArticle', 'book', 'bookSection', 'conferencePaper', 'report', 'thesis', 'Conference Paper']
+            relevant_types = ['journalArticle', 'book', 'bookSection', 'conferencePaper', 'report', 'thesis', 'preprint']
             items = self.filter_items_by_type(items, relevant_types)
         else:
             print(f"[ZOTERO RAG] Using {len(items)} previously retrieved items")

@@ -3,6 +3,7 @@ import requests
 import json
 import os
 import base64
+import pandas as pd
 
 # Set the FastAPI endpoint
 FASTAPI_URL = "http://localhost:8000"
@@ -22,7 +23,7 @@ with st.form("research_form"):
     with tab1:
         st.write("### General Settings")
         use_full_text = st.checkbox("Use Full Text", value=False)
-        max_papers_to_download = st.number_input("Max Papers to Download", min_value=1, max_value=100, value=10)
+        max_papers_to_download = st.number_input("Max Papers to Download per Source", min_value=1, max_value=100, value=10)
         llm_model = st.selectbox(
             "LLM Model",
             ["o4-mini", "o3-mini", "gpt-4", "gpt-3.5-turbo"],
@@ -32,23 +33,21 @@ with st.form("research_form"):
     with tab2:
         st.write("### Zotero Settings")
         use_zotero = st.checkbox("Use Zotero", value=True)
-        if use_zotero:
-            zotero_library_id = st.text_input("Zotero Library ID", value="5310176")
-            zotero_library_type = st.selectbox(
-                "Zotero Library Type",
-                ["group", "user"],
-                index=0
-            )
-            zotero_api_key = st.text_input("Zotero API Key", value="91Z1BHYMHJonusqkbBP6hE60", type="password")
-            zotero_max_papers = st.number_input("Max Zotero Papers to Use", min_value=1, max_value=100, value=10)
-            zotero_collection_keys = st.text_input("Zotero Collection Keys (comma-separated)", value="")
+        zotero_library_id = st.text_input("Zotero Library ID", value="5310176", disabled=not use_zotero)
+        zotero_library_type = st.selectbox(
+            "Zotero Library Type",
+            ["group", "user"],
+            index=0,
+            disabled=not use_zotero
+        )
+        zotero_api_key = st.text_input("Zotero API Key", value="91Z1BHYMHJonusqkbBP6hE60", type="password", disabled=not use_zotero)
+        zotero_max_papers = st.number_input("Max Zotero Papers to Use", min_value=1, max_value=100, value=10, disabled=not use_zotero)
     
     with tab3:
         st.write("### ArXiv Settings")
         use_arxiv = st.checkbox("Use ArXiv", value=True)
-        if use_arxiv:
-            arxiv_max_results = st.number_input("Max ArXiv Results", min_value=1, max_value=1000, value=300)
-            arxiv_max_papers = st.number_input("Max ArXiv Papers to Use", min_value=1, max_value=100, value=100)
+        arxiv_max_results = st.number_input("Max ArXiv Results Retrieved", min_value=1, max_value=1000, value=300, disabled=not use_arxiv)
+        arxiv_max_papers = st.number_input("Max ArXiv Papers to Use", min_value=1, max_value=100, value=100, disabled=not use_arxiv)
     
     submitted = st.form_submit_button("Run Research")
 
@@ -80,8 +79,7 @@ if submitted and research_question:
             "max_papers_used": arxiv_max_papers,
             "download_dir": "./arxiv_downloads",
             "cache_dir": "./arxiv_cache"
-        } if use_arxiv else None,
-        "zotero_collection_keys": [key.strip() for key in zotero_collection_keys.split(",") if key.strip()] if zotero_collection_keys else None
+        } if use_arxiv else None
     }
     
     try:
@@ -95,43 +93,84 @@ if submitted and research_question:
             st.subheader("Literature Review")
             st.write(results["literature_review"])
             
-            # Display file paths
-            st.subheader("Output Files")
-            st.write(f"Literature review saved to: {results['file_path']}")
-            st.write(f"Results saved to JSON: {results['json_path']}")
-            
-            # Add download button for the report
+            # Add download button for the markdown file
             if os.path.exists(results['file_path']):
                 with open(results['file_path'], 'rb') as f:
-                    report_content = f.read()
-                    b64 = base64.b64encode(report_content).decode()
-                    href = f'<a href="data:application/octet-stream;base64,{b64}" download="literature_review.txt">Download Literature Review</a>'
+                    md_content = f.read()
+                    b64 = base64.b64encode(md_content).decode()
+                    href = f'<a href="data:text/markdown;base64,{b64}" download="literature_review.md">Download Literature Review</a>'
                     st.markdown(href, unsafe_allow_html=True)
             
             # Display papers used from each source
             st.subheader("Papers Used")
-            if os.path.exists(results['json_path']):
-                with open(results['json_path'], 'r') as f:
-                    json_results = json.load(f)
-                    
-                    # Show Zotero papers if used
-                    if use_zotero and 'zotero_papers' in json_results:
-                        st.write("### Zotero Papers")
-                        for paper in json_results['zotero_papers']:
-                            with st.expander(f"{paper.get('title', 'Untitled')}"):
-                                st.write(f"**Authors:** {paper.get('authors', 'Unknown')}")
-                                st.write(f"**Year:** {paper.get('year', 'Unknown')}")
-                                st.write(f"**Abstract:** {paper.get('abstract', 'No abstract available')}")
-                    
-                    # Show ArXiv papers if used
-                    if use_arxiv and 'arxiv_papers' in json_results:
-                        st.write("### ArXiv Papers")
-                        for paper in json_results['arxiv_papers']:
-                            with st.expander(f"{paper.get('title', 'Untitled')}"):
-                                st.write(f"**Authors:** {paper.get('authors', 'Unknown')}")
-                                st.write(f"**Year:** {paper.get('year', 'Unknown')}")
-                                st.write(f"**Abstract:** {paper.get('abstract', 'No abstract available')}")
-                                st.write(f"**Link:** {paper.get('link', 'No link available')}")
+            
+            # Show Zotero papers if used
+            if use_zotero and results.get('zotero_papers'):
+                st.write("### Zotero Papers")
+                zotero_data = []
+                for i, paper in enumerate(results['zotero_papers'], 1):
+                    has_full_text = paper.get('has_full_text', False)
+                    zotero_data.append({
+                        'Paper #': i,
+                        'Title': paper.get('title', 'Untitled'),
+                        'Authors': paper.get('authors', 'Unknown'),
+                        'Year': paper.get('year', 'Unknown'),
+                        'Full Text': '✓' if has_full_text else ''
+                    })
+                if zotero_data:
+                    df = pd.DataFrame(zotero_data)
+                    st.dataframe(
+                        df,
+                        hide_index=True,
+                        column_config={
+                            "Paper #": st.column_config.NumberColumn("Paper #", width="small"),
+                            "Title": st.column_config.TextColumn("Title", width="large"),
+                            "Authors": st.column_config.TextColumn("Authors", width="medium"),
+                            "Year": st.column_config.TextColumn("Year", width="small"),
+                            "Full Text": st.column_config.TextColumn("Full Text", width="small")
+                        },
+                        use_container_width=True
+                    )
+            
+            # Show ArXiv papers if used
+            if use_arxiv and results.get('arxiv_papers'):
+                st.write("### ArXiv Papers")
+                arxiv_data = []
+                # Start numbering from the last Zotero paper number + 1, or 1 if no Zotero papers
+                start_number = len(results.get('zotero_papers', [])) + 1 if use_zotero and results.get('zotero_papers') else 1
+                for i, paper in enumerate(results['arxiv_papers'], start_number):
+                    link = paper.get('link', '#')
+                    has_full_text = paper.get('has_full_text', False)
+                    arxiv_data.append({
+                        'Paper #': i,
+                        'Title': paper.get('title', 'Untitled'),
+                        'Authors': paper.get('authors', 'Unknown'),
+                        'Year': paper.get('year', 'Unknown'),
+                        'Full Text': '✓' if has_full_text else '',
+                        'Link': link if link != '#' else '-'
+                    })
+                if arxiv_data:
+                    df = pd.DataFrame(arxiv_data)
+                    st.dataframe(
+                        df,
+                        hide_index=True,
+                        column_config={
+                            "Paper #": st.column_config.NumberColumn("Paper #", width="small"),
+                            "Title": st.column_config.TextColumn("Title", width="large"),
+                            "Authors": st.column_config.TextColumn("Authors", width="medium"),
+                            "Year": st.column_config.TextColumn("Year", width="small"),
+                            "Full Text": st.column_config.TextColumn("Full Text", width="small"),
+                            "Link": st.column_config.LinkColumn(
+                                "Link",
+                                width="small",
+                                display_text="View Paper"
+                            )
+                        },
+                        use_container_width=True
+                    )
+            
+            # Add note about full text papers
+            st.markdown("*Note: Papers marked with ✓ in the 'Full Text' column were processed with full text analysis.*")
             
         else:
             # Show detailed error message
