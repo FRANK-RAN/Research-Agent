@@ -26,21 +26,21 @@ with st.form("research_form"):
         max_papers_to_download = st.number_input("Max Papers to Download per Source", min_value=1, max_value=100, value=10)
         llm_model = st.selectbox(
             "LLM Model",
-            ["o4-mini", "o3-mini", "gpt-4", "gpt-3.5-turbo"],
+            ["o4-mini", "o3-mini", "gpt-4o", "o3"],
             index=0
         )
     
     with tab2:
         st.write("### Zotero Settings")
         use_zotero = st.checkbox("Use Zotero", value=True)
-        zotero_library_id = st.text_input("Zotero Library ID", value="5310176", disabled=not use_zotero)
+        zotero_library_id = st.text_input("Zotero Library ID", value="000", disabled=not use_zotero)
         zotero_library_type = st.selectbox(
             "Zotero Library Type",
             ["group", "user"],
             index=0,
             disabled=not use_zotero
         )
-        zotero_api_key = st.text_input("Zotero API Key", value="91Z1BHYMHJonusqkbBP6hE60", type="password", disabled=not use_zotero)
+        zotero_api_key = st.text_input("Zotero API Key", value="1234567890", type="password", disabled=not use_zotero)
         zotero_max_papers = st.number_input("Max Zotero Papers to Use", min_value=1, max_value=100, value=10, disabled=not use_zotero)
     
     with tab3:
