@@ -1037,8 +1037,8 @@ def save_papers_to_json(retrieved_papers, output_dir="./json_output"):
 
 def main():
     zotero_engine = ZoteroRAG(
-        library_id='5310176',
-        library_type='group',
+        library_id='13788260',
+        library_type='user',
         api_key='91Z1BHYMHJonusqkbBP6hE60',
         llm_model='o4-mini',
         max_papers_used=50,
@@ -1052,7 +1052,8 @@ def main():
 
     research_question = "what is the relationship between chirality and magnetism?"   
 
-    retrived_papers = zotero_engine.get_papers_for_research(research_question=research_question, use_full_text=True, max_papers_to_download=3, max_papers_to_consider=None)
+    research_question = "effient agent memory"
+    retrived_papers = zotero_engine.get_papers_for_research(research_question=research_question, use_full_text=False, max_papers_to_download=3, max_papers_to_consider=None)
     
     # download the retrieved papers into json for checking
     json_path = save_papers_to_json(retrived_papers)

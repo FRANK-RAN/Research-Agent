@@ -18,7 +18,6 @@ arxiv
 llama-index-core
 llama-index-readers-file
 llama-index-llms-openai
-llama-index-vector-stores-simple
 
 # Data processing
 pandas

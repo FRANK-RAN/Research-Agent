@@ -175,3 +175,18 @@ cython_debug/
 
 # database files
 /database
+
+/arxiv_cache
+
+/arxiv_downloads
+
+/json_output
+
+/paper_cache
+
+research_output
+
+zotero_downloads
+
+
+
