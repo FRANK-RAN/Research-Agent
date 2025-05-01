@@ -1,4 +1,4 @@
-# Research Chatbot
+# Research Agent
 
 A powerful research assistant that helps you analyze and interact with academic papers from various sources including arXiv and Zotero.
 
@@ -21,8 +21,8 @@ A powerful research assistant that helps you analyze and interact with academic 
 
 1. Clone the repository:
 ```bash
-git clone [your-repository-url]
-cd Research-Chatbot
+git clone https://github.com/FRANK-RAN/Research-Agent
+cd Research-Agent
 ```
 
 2. Create and activate a virtual environment:
