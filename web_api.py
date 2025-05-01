@@ -26,8 +26,6 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise ValueError("OPENAI_API_KEY environment variable is not set")
 
-# Initialize the OpenAI client with the API key
-# openai_client = CustomOpenAI(api_key=OPENAI_API_KEY)
 
 app = FastAPI()
 

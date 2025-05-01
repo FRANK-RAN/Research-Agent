@@ -1,6 +1,31 @@
+# Core dependencies
 fastapi
 uvicorn
-pydantic
-requests
 streamlit
-python-multipart
+pydantic
+python-dotenv
+
+# PDF processing
+llama-parse
+pdfkit
+markdown
+
+# Data sources
+pyzotero
+arxiv
+
+# LlamaIndex packages
+llama-index-core
+llama-index-readers-file
+llama-index-llms-openai
+llama-index-vector-stores-simple
+
+# Data processing
+pandas
+numpy
+
+# LLM integrations
+openai
+
+# File handling and utilities
+requests

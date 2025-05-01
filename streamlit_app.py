@@ -67,14 +67,14 @@ if submitted and research_question:
             "library_id": zotero_library_id,
             "library_type": zotero_library_type,
             "api_key": zotero_api_key,
-            "llm_model": llm_model,
+            "llm_model": 'o4-mini',
             "max_papers_used": zotero_max_papers,
             "download_dir": "./zotero_downloads",
             "cache_dir": "./paper_cache",
             "local_storage_path": None
         } if use_zotero else None,
         "arxiv_config": {
-            "llm_model": llm_model,
+            "llm_model": 'o4-mini',
             "max_results": arxiv_max_results,
             "max_papers_used": arxiv_max_papers,
             "download_dir": "./arxiv_downloads",
