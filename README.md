@@ -26,9 +26,17 @@ cd Research-Agent
 ```
 
 2. Create and activate a virtual environment:
+
+On Linux/Mac:
 ```bash
 python -m venv .literature
 source .literature/bin/activate  # On Windows, use: .literature\Scripts\activate
+```
+
+On Windows:
+```bash
+python -m venv .literature
+.literature\Scripts\activate.bat  # On Windows, use: .literature\Scripts\activate
 ```
 
 3. Install dependencies:
@@ -47,14 +55,15 @@ LLAMA_CLOUD_API_KEY=your_api_key_here
 
 ### Starting the Application
 
-1. Make the start script executable:
-```bash
-chmod +x start_app.sh
-```
+On Linux/Mac:
 
-2. Start the application:
 ```bash
 ./start_app.sh
+```
+
+On Windows:
+```bash
+.\start_app.bat
 ```
 
 This will start:
@@ -62,9 +71,14 @@ This will start:
 - Frontend UI at http://localhost:8501
 
 ### Stopping the Application
-
+On Linux/Mac:
 ```bash
 ./stop_app.sh
+```
+
+On Windows:
+```bash
+.\stop_app.bat
 ```
 
 ## Project Structure
