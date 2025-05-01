@@ -1035,29 +1035,3 @@ def save_papers_to_json(retrieved_papers, output_dir="./json_output"):
 
 
 
-def main():
-    zotero_engine = ZoteroRAG(
-        library_id='13788260',
-        library_type='user',
-        api_key='91Z1BHYMHJonusqkbBP6hE60',
-        llm_model='o4-mini',
-        max_papers_used=50,
-        download_dir='./zotero_downloads',
-        cache_dir='./paper_cache',
-        local_storage_path='/Users/frankran/Zotero/storage'
-    )
-
-    # Example usage
-    research_question = "What are the sensitivity of these measurements: Spin Noise Spectroscopy (SNS), Optically Detected Magnetic Resonance (ODMR), Nuclear Magnetic Resonance (NMR) setups?"
-
-    research_question = "what is the relationship between chirality and magnetism?"   
-
-    research_question = "effient agent memory"
-    retrived_papers = zotero_engine.get_papers_for_research(research_question=research_question, use_full_text=False, max_papers_to_download=3, max_papers_to_consider=None)
-    
-    # download the retrieved papers into json for checking
-    json_path = save_papers_to_json(retrived_papers)
-
-
-if __name__ == "__main__":
-    main()

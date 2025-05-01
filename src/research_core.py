@@ -535,10 +535,10 @@ def save_results_to_json(results, output_dir="./json_output"):
 def main():
     # Example configuration for Zotero
     zotero_config = {
-        'library_id': '5310176',
+        'library_id': '123',
         'library_type': 'group',
-        'api_key': '91Z1BHYMHJonusqkbBP6hE60',
-        'llm_model': 'o3-mini',
+        'api_key': '123',
+        'llm_model': 'o4-mini',
         'max_papers_used': 10,
         'download_dir': './zotero_downloads',
         'cache_dir': './paper_cache',

@@ -826,32 +826,3 @@ def save_papers_to_json(retrieved_papers, output_dir="./json_output"):
     print(f"[ARXIV RAG] Saved retrieved papers to {filepath}")
     return filepath
 
-def main():
-    arxiv_engine = ArxivRAG(
-        llm_model='o3-mini',
-        max_results=300,
-        max_papers_used=100,
-        download_dir='./arxiv_downloads',
-        cache_dir='./arxiv_cache'
-    )
-
-    # Example usage
-    research_question = "What is the challenges to efficient ai agent memory"
-
-    retrieved_papers = arxiv_engine.get_papers_for_research(
-        research_question=research_question, 
-        use_llm_query=True,
-        use_full_text=False, 
-        max_papers_to_download=3
-    )
-    
-    # Save the retrieved papers into json for checking
-    json_path = save_papers_to_json(retrieved_papers)
-    print(f"Prompt saved to {json_path}")
-    
-    # You could then pass this prompt to your LLM to generate a response
-    # For example:
-    # response = llm.complete(retrieved_papers['prompt']).text
-
-if __name__ == "__main__":
-    main()
