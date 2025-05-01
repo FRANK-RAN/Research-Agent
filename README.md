@@ -30,13 +30,13 @@ cd Research-Agent
 On Linux/Mac:
 ```bash
 python -m venv .literature
-source .literature/bin/activate  # On Windows, use: .literature\Scripts\activate
+source .literature/bin/activate  
 ```
 
 On Windows:
 ```bash
 python -m venv .literature
-.literature\Scripts\activate.bat  # On Windows, use: .literature\Scripts\activate
+.literature\Scripts\activate.bat  
 ```
 
 3. Install dependencies:

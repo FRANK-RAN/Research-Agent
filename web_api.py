@@ -9,7 +9,6 @@ from src.research_core import ResearchCore, save_results_to_json
 from src.models import CustomOpenAI
 import json
 import markdown
-import pdfkit
 
 # Load environment variables from .env file
 load_dotenv()
@@ -45,32 +44,8 @@ class ResearchRequest(BaseModel):
 class ResearchResponse(BaseModel):
     literature_review: str
     file_path: str
-    json_path: str
-    pdf_path: Optional[str] = None
     zotero_papers: Optional[List[Dict[str, Any]]] = None
     arxiv_papers: Optional[List[Dict[str, Any]]] = None
-
-def convert_md_to_pdf(md_file_path: str) -> Optional[str]:
-    """Convert markdown file to PDF if pdfkit is available."""
-    try:
-        import pdfkit
-        pdf_path = md_file_path.replace('.md', '.pdf')
-        
-        # Convert markdown to HTML
-        with open(md_file_path, 'r') as f:
-            md_content = f.read()
-        html_content = markdown.markdown(md_content)
-        
-        # Convert HTML to PDF
-        pdfkit.from_string(html_content, pdf_path)
-        return pdf_path
-    except ImportError:
-        logger.warning("pdfkit not installed - skipping PDF conversion")
-        return None
-    except Exception as e:
-        logger.error(f"Error converting to PDF: {str(e)}")
-        return None
-    
 
 @app.post("/run_research", response_model=ResearchResponse)
 async def run_research(request: ResearchRequest):
@@ -107,14 +82,7 @@ async def run_research(request: ResearchRequest):
         
         logger.info("Saving results to JSON...")
         # Save results to JSON
-        json_path = save_results_to_json(results)
-        
-        # Load the JSON file to get the papers used
-        with open(json_path, 'r') as f:
-            json_results = json.load(f)
-        
-        # Convert markdown to PDF
-        pdf_path = convert_md_to_pdf(results['file_path'])
+        save_results_to_json(results)
         
         # Extract paper details from the documents
         zotero_papers = []
@@ -220,8 +188,6 @@ async def run_research(request: ResearchRequest):
         return ResearchResponse(
             literature_review=results['literature_review'],
             file_path=results['file_path'],
-            json_path=json_path,
-            pdf_path=pdf_path,
             zotero_papers=zotero_papers if zotero_papers else None,
             arxiv_papers=arxiv_papers if arxiv_papers else None
         )
