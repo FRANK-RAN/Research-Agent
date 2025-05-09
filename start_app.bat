@@ -1,33 +1,51 @@
 @echo off
 
-REM Function to check if a port is in use
+REM Function to check if a port is in use and kill the process
 :check_port
 netstat -ano | findstr ":%1 " >nul
 if %errorlevel% equ 0 (
     echo Port %1 is in use. Attempting to kill the process...
     for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%1 "') do (
-        taskkill /F /PID %%a >nul 2>&1
+        if not "%%a"=="" (
+            taskkill /F /PID %%a >nul 2>&1
+            if %errorlevel% equ 0 (
+                echo Successfully killed process with PID %%a
+            ) else (
+                echo Failed to kill process with PID %%a
+            )
+        )
     )
-    timeout /t 1 /nobreak >nul
+    timeout /t 2 /nobreak >nul
 )
 exit /b
 
 REM Clean up any existing processes
 if exist .api_pid (
     for /f %%i in (.api_pid) do (
-        taskkill /F /PID %%i >nul 2>&1
+        if not "%%i"=="" (
+            taskkill /F /PID %%i >nul 2>&1
+            if %errorlevel% equ 0 (
+                echo Successfully killed API process with PID %%i
+            )
+        )
     )
     del .api_pid
 )
 
 if exist .streamlit_pid (
     for /f %%i in (.streamlit_pid) do (
-        taskkill /F /PID %%i >nul 2>&1
+        if not "%%i"=="" (
+            taskkill /F /PID %%i >nul 2>&1
+            if %errorlevel% equ 0 (
+                echo Successfully killed Streamlit process with PID %%i
+            )
+        )
     )
     del .streamlit_pid
 )
 
 REM Kill any processes using our ports
+echo Checking and cleaning up ports...
 call :check_port 8000
 call :check_port 8501
 
