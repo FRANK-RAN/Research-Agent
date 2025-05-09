@@ -5,10 +5,17 @@ import os
 import base64
 import pandas as pd
 
+# Set page config with custom title
+st.set_page_config(
+    page_title="Research Agent",
+    page_icon="🔍",
+    layout="centered"
+)
+
 # Set the FastAPI endpoint
 FASTAPI_URL = "http://localhost:8000"
 
-st.title("Research Agent UI")
+st.title("Research Agent")
 
 # Input form
 with st.form("research_form"):
@@ -42,6 +49,19 @@ with st.form("research_form"):
         )
         zotero_api_key = st.text_input("Zotero API Key", value="1234567890", type="password", disabled=not use_zotero)
         zotero_max_papers = st.number_input("Max Zotero Papers to Use", min_value=1, max_value=100, value=10, disabled=not use_zotero)
+        
+        # Simple text input for collection names
+        if use_zotero:
+            st.write("Enter Zotero Collection Names (one per line):")
+            collection_names_input = st.text_area(
+                "Collection Names",
+                height=100,
+                help="Enter the names of the Zotero collections you want to search, one per line",
+                disabled=not use_zotero
+            )
+            zotero_collection_names = [name.strip() for name in collection_names_input.split('\n') if name.strip()] if collection_names_input else []
+        else:
+            zotero_collection_names = []
     
     with tab3:
         st.write("### ArXiv Settings")
@@ -69,17 +89,18 @@ if submitted and research_question:
             "api_key": zotero_api_key,
             "llm_model": llm_model,
             "max_papers_used": zotero_max_papers,
-            "download_dir": "./zotero_downloads",
-            "cache_dir": "./paper_cache",
+            "download_dir": "data/zotero_downloads",
+            "cache_dir": "data/paper_cache",
             "local_storage_path": None
         } if use_zotero else None,
         "arxiv_config": {
             "llm_model": llm_model,
             "max_results": arxiv_max_results,
             "max_papers_used": arxiv_max_papers,
-            "download_dir": "./arxiv_downloads",
-            "cache_dir": "./arxiv_cache"
-        } if use_arxiv else None
+            "download_dir": "data/arxiv_downloads",
+            "cache_dir": "data/arxiv_cache"
+        } if use_arxiv else None,
+        "zotero_collection_names": zotero_collection_names if use_zotero else None
     }
     
     try:

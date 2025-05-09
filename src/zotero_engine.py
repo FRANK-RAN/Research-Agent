@@ -203,8 +203,12 @@ class ZoteroRAG:
         else:
             # Include only specified types
             filtered_items = [item for item in items if item.get('data', {}).get('itemType') in included_types]
-        
+            
+        # Print the types of the filtered items
+        item_types = [item.get('data', {}).get('itemType') for item in filtered_items]
+
         print(f"[ZOTERO] Filtered from {len(items)} to {len(filtered_items)} items based on type")
+        print(f"[ZOTERO] Item types: {item_types}")
         return filtered_items
 
 
@@ -917,7 +921,7 @@ class ZoteroRAG:
     def get_papers_for_research(
         self,
         research_question: str,
-        collection_keys: List[str] = None,
+        collection_names: List[str] = None,
         use_full_text: Optional[bool] = None,
         max_papers_to_download: int = 3,
         max_papers_to_consider: int = None,
@@ -928,7 +932,7 @@ class ZoteroRAG:
         
         Args:
             research_question: The research question to answer
-            collection_keys: List of Zotero collection keys to search within
+            collection_names: List of Zotero collection names to search within
                             If None, will search the entire library
             use_full_text: Whether to download and parse PDFs or just use abstracts.
                         If None, LLM will analyze and give recommendation.
@@ -945,8 +949,18 @@ class ZoteroRAG:
         
         # Step 1: Retrieve items from Zotero (if not already provided)
         if items is None:
-            if collection_keys:
-                items = self.get_collection_items(collection_keys)
+            if collection_names:
+                # Get all collections and create a name-to-key mapping
+                collections = self.get_collections()
+                collection_name_to_key = {collection['data']['name']: collection['key'] for collection in collections}
+                
+                # Convert collection names to keys
+                collection_keys = [collection_name_to_key[name] for name in collection_names if name in collection_name_to_key]
+                if not collection_keys:
+                    print(f"[ZOTERO RAG] Warning: No valid collection names found. Searching entire library.")
+                    items = self.get_all_library_items()
+                else:
+                    items = self.get_collection_items(collection_keys)
             else:
                 items = self.get_all_library_items()
             
@@ -995,7 +1009,7 @@ class ZoteroRAG:
         self.search_history.append({
             "timestamp": time.ctime(),
             "research_question": research_question,
-            "collection_keys": collection_keys,
+            "collection_names": collection_names,
             "full_text_used": use_full_text,
             "documents_count": len(documents)
         })
@@ -1033,5 +1047,36 @@ def save_papers_to_json(retrieved_papers, output_dir="./json_output"):
 
 
 
+def main():
+    zotero_engine = ZoteroRAG(
+        library_id="13788260",
+        library_type="user",
+        api_key="d9UfeZy7R2TQUDOMn4Ppqd98",
+        llm_model="o3-mini"
+    )
+
+    research_question = "efficient AI"
+    collection_names = ["Agent"]
+    use_full_text = False
+    max_papers_to_download = 3
+    max_papers_to_consider = None
+    items = None
+
+    retrieved_papers = zotero_engine.get_papers_for_research(   
+        research_question,
+        collection_names,
+        use_full_text,
+        max_papers_to_download,
+        max_papers_to_consider,
+        items
+    )
+
+    save_papers_to_json(retrieved_papers)
+
+    print(retrieved_papers)
+
+if __name__ == "__main__":
+    main()
+    
 
 

@@ -38,7 +38,7 @@ class ResearchRequest(BaseModel):
     llm_model: str = "o4-mini"
     zotero_config: Optional[Dict[str, Any]] = None
     arxiv_config: Optional[Dict[str, Any]] = None
-    zotero_collection_keys: Optional[List[str]] = None
+    zotero_collection_names: Optional[List[str]] = None
 
 # Pydantic model for the response
 class ResearchResponse(BaseModel):
@@ -75,7 +75,7 @@ async def run_research(request: ResearchRequest):
             research_question=request.research_question,
             use_zotero=request.use_zotero,
             use_arxiv=request.use_arxiv,
-            zotero_collection_keys=request.zotero_collection_keys,
+            zotero_collection_names=request.zotero_collection_names,
             use_full_text=request.use_full_text,
             max_papers_to_download=request.max_papers_to_download
         )

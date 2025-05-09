@@ -71,7 +71,7 @@ class ResearchCore:
             research_question: str, 
             use_zotero: bool = True,
             use_arxiv: bool = True,
-            zotero_collection_keys: List[str] = None,
+            zotero_collection_names: List[str] = None,
             use_full_text: bool = True,
             max_papers_to_download: int = 3
         ) -> Tuple[List[Document], Dict[str, Any]]:
@@ -83,7 +83,7 @@ class ResearchCore:
                 research_question: The research question to answer
                 use_zotero: Whether to retrieve papers from Zotero
                 use_arxiv: Whether to retrieve papers from ArXiv
-                zotero_collection_keys: Specific Zotero collections to search (if None, searches entire library)
+                zotero_collection_names: Specific Zotero collection names to search (if None, searches entire library)
                 use_full_text: Whether to download and process full-text papers
                 max_papers_to_download: Maximum number of papers to download for full-text analysis
                 
@@ -114,7 +114,7 @@ class ResearchCore:
                 print(f"[RESEARCH CORE] Retrieving papers from Zotero")
                 zotero_result = self.zotero_engine.get_papers_for_research(
                     research_question=research_question,
-                    collection_keys=zotero_collection_keys,
+                    collection_names=zotero_collection_names,
                     use_full_text=use_full_text,
                     max_papers_to_download=max_papers_to_download
                 )
@@ -418,7 +418,7 @@ class ResearchCore:
         research_question: str,
         use_zotero: bool = True,
         use_arxiv: bool = True,
-        zotero_collection_keys: List[str] = None,
+        zotero_collection_names: List[str] = None,
         use_full_text: bool = True,
         max_papers_to_download: int = 3
     ) -> Dict[str, Any]:
@@ -429,7 +429,7 @@ class ResearchCore:
             research_question: The research question to answer
             use_zotero: Whether to retrieve papers from Zotero
             use_arxiv: Whether to retrieve papers from ArXiv
-            zotero_collection_keys: Specific Zotero collections to search (if None, searches entire library)
+            zotero_collection_names: Specific Zotero collection names to search (if None, searches entire library)
             use_full_text: Whether to download and process full-text papers
             max_papers_to_download: Maximum number of papers to download for full-text analysis
             
@@ -444,7 +444,7 @@ class ResearchCore:
             research_question=research_question,
             use_zotero=use_zotero,
             use_arxiv=use_arxiv,
-            zotero_collection_keys=zotero_collection_keys,
+            zotero_collection_names=zotero_collection_names,
             use_full_text=use_full_text,
             max_papers_to_download=max_papers_to_download
         )
